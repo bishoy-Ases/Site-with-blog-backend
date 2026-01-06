@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1767438511470,
+      "tag": "0000_brainy_kronos",
+      "breakpoints": true
+    }
+  ]
+}
