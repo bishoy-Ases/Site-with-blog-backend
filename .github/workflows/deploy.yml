@@ -8,6 +8,9 @@ on:
 
 env:
   AWS_REGION: us-east-1
+  AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
+  AMPLIFY_BRANCH: ${{ secrets.AMPLIFY_BRANCH }}
+  AMPLIFY_POLL_SECONDS: 10
 
 jobs:
   build-and-deploy:
@@ -63,6 +66,46 @@ jobs:
       - name: Get API Gateway URL
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: cd terraform && terraform output -raw api_gateway_url
+
+      - name: Trigger Amplify deployment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.AMPLIFY_APP_ID != '' && env.AMPLIFY_BRANCH != ''
+        run: |
+          job_id=$(aws amplify start-job \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name "$AMPLIFY_BRANCH" \
+            --job-type RELEASE \
+            --query 'jobSummary.jobId' \
+            --output text)
+          echo "AMPLIFY_JOB_ID=$job_id" >> $GITHUB_ENV
+          echo "Started Amplify job: $job_id"
+
+      - name: Wait for Amplify deployment
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.AMPLIFY_JOB_ID != ''
+        run: |
+          echo "Polling Amplify job $AMPLIFY_JOB_ID ..."
+          deadline=$((SECONDS + 1800)) # 30 minutes timeout
+          while true; do
+            status=$(aws amplify get-job \
+              --app-id "$AMPLIFY_APP_ID" \
+              --branch-name "$AMPLIFY_BRANCH" \
+              --job-id "$AMPLIFY_JOB_ID" \
+              --query 'job.summary.status' \
+              --output text)
+            echo "Status: $status"
+            if [[ "$status" == "SUCCEED" ]]; then
+              echo "Amplify deployment succeeded"
+              break
+            fi
+            if [[ "$status" == "FAILED" || "$status" == "STOPPED" ]]; then
+              echo "Amplify deployment failed with status $status"
+              exit 1
+            fi
+            if (( SECONDS > deadline )); then
+              echo "Timed out waiting for Amplify deployment"
+              exit 1
+            fi
+            sleep "$AMPLIFY_POLL_SECONDS"
+          done
 
       - name: Upload Lambda package artifact
         if: always()
