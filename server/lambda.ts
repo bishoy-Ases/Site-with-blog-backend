@@ -3,6 +3,7 @@
  * Converts API Gateway events to Express request/response format
  */
 
+// @ts-ignore - aws-lambda types not installed
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { createServer } from "http";
 import express from "express";

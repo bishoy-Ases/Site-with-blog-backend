@@ -12,7 +12,8 @@ import logoUrl from "@assets/⬇️_Download_1766924051122.png";
 import type { BlogPost } from "@shared/schema";
 
 export default function BlogPostPage() {
-  const { slug } = useParams();
+  const params = useParams<{ slug: string }>();
+  const slug = params?.slug;
   const [language, setLanguage] = useState<Language>(() => {
     const stored = localStorage.getItem('language') as Language | null;
     return stored === 'ar' ? 'ar' : 'en';

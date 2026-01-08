@@ -16,7 +16,8 @@ import {
   ArrowLeft,
   Calculator,
   Zap,
-  Home as HomeIcon
+  Home as HomeIcon,
+  CheckCircle
 } from "lucide-react";
 
 /**
@@ -94,8 +95,7 @@ export default function FoundationCalculator() {
   // SEO setup
   useSEO({
     title: language === 'ar' ? "حاسبة تسعيرة وضع الأساسات الكهربائية" : "Foundation Laying Price Calculator",
-    description: language === 'ar' ? "احسب تكلفة وضع الأساسات الكهربائية بدقة" : "Calculate electrical foundation laying costs accurately",
-    keywords: language === 'ar' ? "حاسبة, تسعيرة, أساسات كهربائية, أسيس كهرابا" : "calculator, pricing, electrical foundation, Ases Kahraba"
+    description: language === 'ar' ? "احسب تكلفة وضع الأساسات الكهربائية بدقة" : "Calculate electrical foundation laying costs accurately"
   });
 
   // Breadcrumb structured data

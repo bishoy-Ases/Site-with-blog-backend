@@ -5,7 +5,6 @@ import {
   projects,
   services,
   siteSettings,
-  blogPosts,
   type InsertSiteContent,
   type SiteContent,
   type InsertBlogPost,
@@ -15,9 +14,7 @@ import {
   type InsertService,
   type Service,
   type InsertSiteSetting,
-  type SiteSetting,
-  type InsertBlogPost,
-  type BlogPost
+  type SiteSetting
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
@@ -55,8 +52,7 @@ export interface IStorage {
   upsertSetting(setting: InsertSiteSetting): Promise<SiteSetting>;
 
   // Blog Posts
-  getAllBlogPosts(): Promise<BlogPost[]>;
-  getPublishedBlogPosts(): Promise<BlogPost[]>;
+  getBlogPosts(publishedOnly?: boolean): Promise<BlogPost[]>;
   getBlogPost(id: number): Promise<BlogPost | undefined>;
   getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
   createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
@@ -76,15 +72,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertSiteContent(content: InsertSiteContent): Promise<SiteContent> {
+    const contentData = content as any;
     const [result] = await db
       .insert(siteContent)
-      .values(content)
+      .values(contentData)
       .onConflictDoUpdate({
         target: siteContent.sectionKey,
         set: {
-          contentAr: content.contentAr,
-          contentEn: content.contentEn,
-          imageUrl: content.imageUrl,
+          contentAr: contentData.contentAr,
+          contentEn: contentData.contentEn,
+          imageUrl: (contentData.imageUrl || null),
         },
       })
       .returning();
@@ -186,17 +183,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertSetting(setting: InsertSiteSetting): Promise<SiteSetting> {
+    const settingData = setting as any;
     const [result] = await db
       .insert(siteSettings)
-      .values({
-        ...setting,
-        updatedAt: new Date(),
-      })
+      .values(settingData)
       .onConflictDoUpdate({
         target: siteSettings.settingKey,
         set: {
-          settingValue: setting.settingValue,
-          description: setting.description,
+          settingValue: (settingData.settingValue || null),
+          description: (settingData.description || null),
           updatedAt: new Date(),
         },
       })

@@ -66,7 +66,7 @@ async function upsertUser(claims: any) {
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
-  });
+  } as any);
 }
 
 export async function setupAuth(app: Express) {
@@ -160,7 +160,7 @@ export async function setupAuth(app: Express) {
         firstName: 'Bishoy',
         lastName: 'Ases',
         profileImageUrl: null,
-      });
+      } as any);
 
       return done(null, user);
     } catch (error) {

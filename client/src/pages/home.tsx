@@ -127,35 +127,17 @@ export default function Home() {
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-1 flex-wrap">
-              {navItems.map((item) => {
-                if (item.href) {
-                  // External link
-                  return (
-                    <Link key={item.id} href={item.href}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        data-testid={`nav-${item.id}`}
-                      >
-                        {item.label}
-                      </Button>
-                    </Link>
-                  );
-                } else {
-                  // Scroll to section
-                  return (
-                    <Button
-                      key={item.id}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => scrollToSection(item.id)}
-                      data-testid={`nav-${item.id}`}
-                    >
-                      {item.label}
-                    </Button>
-                  );
-                }
-              })}
+              {navItems.map((item: any) => (
+                <Button
+                  key={item.id}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => scrollToSection(item.id)}
+                  data-testid={`nav-${item.id}`}
+                >
+                  {item.label}
+                </Button>
+              ))}
             </nav>
 
             <div className="flex items-center gap-2">
@@ -175,42 +157,21 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Mobile Nav */}
-          {mobileMenuOpen && (
             <nav className="md:hidden py-4 border-t">
               <div className="flex flex-col gap-2">
-                {navItems.map((item) => {
-                  if (item.href) {
-                    // External link
-                    return (
-                      <Link key={item.id} href={item.href}>
-                        <Button
-                          variant="ghost"
-                          className="justify-start w-full"
-                          data-testid={`mobile-nav-${item.id}`}
-                        >
-                          {item.label}
-                        </Button>
-                      </Link>
-                    );
-                  } else {
-                    // Scroll to section
-                    return (
-                      <Button
-                        key={item.id}
-                        variant="ghost"
-                        className="justify-start"
-                        onClick={() => scrollToSection(item.id)}
-                        data-testid={`mobile-nav-${item.id}`}
-                      >
-                        {item.label}
-                      </Button>
-                    );
-                  }
-                })}
+                {navItems.map((item: any) => (
+                  <Button
+                    key={item.id}
+                    variant="ghost"
+                    className="justify-start"
+                    onClick={() => scrollToSection(item.id)}
+                    data-testid={`mobile-nav-${item.id}`}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
               </div>
             </nav>
-          )}
         </div>
       </header>
 

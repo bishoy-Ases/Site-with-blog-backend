@@ -61,7 +61,7 @@ Allow: /`);
   </url>`;
 
       // Add blog posts to sitemap
-      const blogPosts = await storage.getPublishedBlogPosts();
+      const blogPosts = await storage.getBlogPosts(true);
       for (const post of blogPosts) {
         const postDate = post.createdAt ? new Date(post.createdAt).toISOString().split('T')[0] : today;
         sitemap += `
@@ -343,7 +343,7 @@ Allow: /`);
   // Get all published blog posts (public)
   app.get("/api/blog", async (req, res) => {
     try {
-      const posts = await storage.getPublishedBlogPosts();
+      const posts = await storage.getBlogPosts(true);
       res.json(posts);
     } catch (error) {
       console.error("Error fetching blog posts:", error);
@@ -372,7 +372,7 @@ Allow: /`);
   // Get all blog posts including drafts (admin only)
   app.get("/api/admin/blog", isAuthenticated, async (req, res) => {
     try {
-      const posts = await storage.getAllBlogPosts();
+      const posts = await storage.getBlogPosts(false);
       res.json(posts);
     } catch (error) {
       console.error("Error fetching blog posts:", error);

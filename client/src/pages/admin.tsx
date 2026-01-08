@@ -44,8 +44,195 @@ const emptyBlogPost: InsertBlogPost = {
   excerptAr: '',
   excerptEn: '',
   slug: '',
-  published: true,
+  published: false,
 };
+
+// Type definitions for content sections
+interface AboutContent {
+  title?: string;
+  content?: string;
+  experience?: string;
+  experienceValue?: string;
+}
+
+interface ContactContent {
+  title?: string;
+  description?: string;
+  phone?: string;
+  email?: string;
+  location?: string;
+  cta?: string;
+}
+
+// SiteContentEditor component
+function SiteContentEditor({
+  sectionKey,
+  title,
+  icon: Icon,
+  renderForm,
+}: {
+  sectionKey: string;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  renderForm: (
+    contentAr: any,
+    contentEn: any,
+    setContentAr: (value: any) => void,
+    setContentEn: (value: any) => void
+  ) => React.ReactNode;
+}) {
+  const { toast } = useToast();
+  const [contentAr, setContentAr] = useState<any>({});
+  const [contentEn, setContentEn] = useState<any>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  const { data: content } = useQuery<SiteContent>({
+    queryKey: [`/api/content/${sectionKey}`],
+  });
+
+  useEffect(() => {
+    if (content) {
+      setContentAr(JSON.parse(content.contentAr || '{}'));
+      setContentEn(JSON.parse(content.contentEn || '{}'));
+    }
+  }, [content]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const response = await fetch(`${apiUrl}/api/content/${sectionKey}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sectionKey,
+          contentAr: JSON.stringify(contentAr),
+          contentEn: JSON.stringify(contentEn),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save');
+      toast({ title: 'Success', description: 'Content saved successfully' });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save content',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="w-5 h-5" />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="space-y-6">
+          {renderForm(contentAr, contentEn, setContentAr, setContentEn)}
+          <Button type="submit" disabled={isSaving}>
+            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            <Save className="w-4 h-4 mr-2" />
+            Save Changes
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HeroEditor() {
+  return (
+    <SiteContentEditor
+      sectionKey="hero"
+      title="Hero Section"
+      icon={Home}
+      renderForm={(contentAr, contentEn, setContentAr, setContentEn) => {
+        return (
+          <Tabs defaultValue="english" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="english">English</TabsTrigger>
+              <TabsTrigger value="arabic">Arabic</TabsTrigger>
+            </TabsList>
+            <TabsContent value="english" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tagline</Label>
+                <Input
+                  value={contentEn?.tagline || ""}
+                  onChange={(e) => setContentEn({ ...contentEn, tagline: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Subtitle</Label>
+                <Textarea
+                  value={contentEn?.subtitle || ""}
+                  onChange={(e) => setContentEn({ ...contentEn, subtitle: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>CTA Button</Label>
+                  <Input
+                    value={contentEn?.cta || ""}
+                    onChange={(e) => setContentEn({ ...contentEn, cta: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Secondary CTA</Label>
+                  <Input
+                    value={contentEn?.ctaSecondary || ""}
+                    onChange={(e) => setContentEn({ ...contentEn, ctaSecondary: e.target.value })}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="arabic" className="space-y-4" dir="rtl">
+              <div className="space-y-2">
+                <Label>الشعار</Label>
+                <Input
+                  value={contentAr?.tagline || ""}
+                  onChange={(e) => setContentAr({ ...contentAr, tagline: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>العنوان الفرعي</Label>
+                <Textarea
+                  value={contentAr?.subtitle || ""}
+                  onChange={(e) => setContentAr({ ...contentAr, subtitle: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>زر الإجراء</Label>
+                  <Input
+                    value={contentAr?.cta || ""}
+                    onChange={(e) => setContentAr({ ...contentAr, cta: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>زر الإجراء الثانوي</Label>
+                  <Input
+                    value={contentAr?.ctaSecondary || ""}
+                    onChange={(e) => setContentAr({ ...contentAr, ctaSecondary: e.target.value })}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        );
+      }}
+    />
+  );
+}
 
 function AboutEditor() {
   return (
@@ -280,6 +467,7 @@ function ProjectsManager({ language, t }: { language: Language; t: typeof transl
   const { toast } = useToast();
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // @ts-ignore - useState type inference issue
   const [project, setProject] = useState<InsertProject>(emptyProject);
 
   const { data: projects, isLoading } = useQuery<Project[]>({
@@ -385,7 +573,7 @@ function ProjectsManager({ language, t }: { language: Language; t: typeof transl
                     <div className="space-y-2">
                       <Label>Title (English)</Label>
                       <Input
-                        value={project.titleEn}
+                        value={(project as any).titleEn}
                         onChange={(e) => setProject({ ...project, titleEn: e.target.value })}
                         required
                       />
@@ -394,7 +582,7 @@ function ProjectsManager({ language, t }: { language: Language; t: typeof transl
                       <Label>Category</Label>
                       <select
                         className="w-full p-2 border rounded"
-                        value={project.category}
+                        value={(project as any).category}
                         onChange={(e) => setProject({ ...project, category: e.target.value })}
                       >
                         <option value="residential">Residential</option>
@@ -541,6 +729,7 @@ function ServicesManager({ language, t }: { language: Language; t: typeof transl
   const { toast } = useToast();
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // @ts-ignore - useState type inference issue
   const [service, setService] = useState<InsertService>(emptyService);
 
   const { data: services, isLoading } = useQuery<Service[]>({
@@ -771,6 +960,7 @@ function BlogManager({ language, t }: { language: Language; t: typeof translatio
   const { toast } = useToast();
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // @ts-ignore - useState type inference issue
   const [post, setPost] = useState<InsertBlogPost>(emptyBlogPost);
 
   const { data: posts, isLoading } = useQuery<BlogPost[]>({
@@ -1361,7 +1551,7 @@ export default function Admin() {
           
           <div className="flex items-center gap-4 mb-8">
             <div className="w-12 h-12 rounded-md bg-primary/20 flex items-center justify-center">
-              <Settings className="w-6 h-6 text-primary" />
+              <SettingsIcon className="w-6 h-6 text-primary" />
             </div>
             <h1 className="text-2xl md:text-3xl font-bold" data-testid="text-admin-title">
               {t.admin.title}

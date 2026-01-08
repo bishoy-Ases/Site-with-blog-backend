@@ -129,8 +129,7 @@ export default function FinishingCalculator() {
   // SEO setup
   useSEO({
     title: language === 'ar' ? "حاسبة تسعيرة التشطيبات الكهربائية" : "Finishing Price Calculator",
-    description: language === 'ar' ? "احسب تكلفة التشطيبات الكهربائية بدقة" : "Calculate electrical finishing costs accurately",
-    keywords: language === 'ar' ? "حاسبة, تسعيرة, تشطيبات كهربائية, أسيس كهرابا" : "calculator, pricing, electrical finishing, Ases Kahraba"
+    description: language === 'ar' ? "احسب تكلفة التشطيبات الكهربائية بدقة" : "Calculate electrical finishing costs accurately"
   });
 
   // Breadcrumb structured data

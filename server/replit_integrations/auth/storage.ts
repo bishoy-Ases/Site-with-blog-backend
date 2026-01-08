@@ -22,7 +22,7 @@ class AuthStorage implements IAuthStorage {
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          ...(userData as any),
           updatedAt: new Date(),
         },
       })

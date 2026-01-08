@@ -1,5 +1,4 @@
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Re-export auth schema (users and sessions tables)
@@ -20,9 +19,17 @@ export const blogPosts = sqliteTable("blog_posts", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
-export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
-  id: true,
-  createdAt: true,
+// Manual Zod schemas
+export const insertBlogPostSchema = z.object({
+  titleAr: z.string().min(1),
+  titleEn: z.string().min(1),
+  contentAr: z.string().min(1),
+  contentEn: z.string().min(1),
+  excerptAr: z.string().min(1),
+  excerptEn: z.string().min(1),
+  slug: z.string().min(1),
+  imageUrl: z.string().optional().nullable(),
+  published: z.boolean().default(true),
 });
 
 export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
@@ -37,8 +44,11 @@ export const siteContent = sqliteTable("site_content", {
   imageUrl: text("image_url"), // Optional image for the section
 });
 
-export const insertSiteContentSchema = createInsertSchema(siteContent).omit({
-  id: true,
+export const insertSiteContentSchema = z.object({
+  sectionKey: z.string().min(1),
+  contentAr: z.string().min(1),
+  contentEn: z.string().min(1),
+  imageUrl: z.string().optional().nullable(),
 });
 
 export type InsertSiteContent = z.infer<typeof insertSiteContentSchema>;
@@ -58,9 +68,15 @@ export const projects = sqliteTable("projects", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
-export const insertProjectSchema = createInsertSchema(projects).omit({
-  id: true,
-  createdAt: true,
+export const insertProjectSchema = z.object({
+  titleAr: z.string().min(1),
+  titleEn: z.string().min(1),
+  descriptionAr: z.string().min(1),
+  descriptionEn: z.string().min(1),
+  imageUrl: z.string().optional().nullable(),
+  category: z.string().min(1),
+  completionDate: z.date().optional().nullable(),
+  featured: z.boolean().default(false),
 });
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
@@ -78,9 +94,13 @@ export const services = sqliteTable("services", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
-export const insertServiceSchema = createInsertSchema(services).omit({
-  id: true,
-  createdAt: true,
+export const insertServiceSchema = z.object({
+  titleAr: z.string().min(1),
+  titleEn: z.string().min(1),
+  descriptionAr: z.string().min(1),
+  descriptionEn: z.string().min(1),
+  icon: z.string().optional().nullable(),
+  featured: z.boolean().default(false),
 });
 
 export type InsertService = z.infer<typeof insertServiceSchema>;
@@ -90,11 +110,12 @@ export type Service = typeof services.$inferSelect;
 export const adminUsers = sqliteTable("admin_users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
-  isAdmin: integer("is_admin", { mode: "boolean" }).default(true),
+  isAdmin: integer("is_admin", { mode: "boolean" }).default(false),
 });
 
-export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
-  id: true,
+export const insertAdminUserSchema = z.object({
+  email: z.string().email(),
+  isAdmin: z.boolean().default(false),
 });
 
 export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
@@ -109,9 +130,10 @@ export const siteSettings = sqliteTable("site_settings", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
-export const insertSiteSettingSchema = createInsertSchema(siteSettings).omit({
-  id: true,
-  updatedAt: true,
+export const insertSiteSettingSchema = z.object({
+  settingKey: z.string().min(1),
+  settingValue: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
 });
 
 export type InsertSiteSetting = z.infer<typeof insertSiteSettingSchema>;
@@ -120,3 +142,4 @@ export type SiteSetting = typeof siteSettings.$inferSelect;
 // API Contract Types
 export type SiteContentResponse = SiteContent;
 export type SiteContentListResponse = SiteContent[];
+
