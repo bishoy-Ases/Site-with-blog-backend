@@ -221,3 +221,46 @@ resource "aws_api_gateway_usage_plan" "main" {
 #   stage_name  = aws_api_gateway_stage.main.stage_name
 #   domain_name = aws_api_gateway_domain_name.main.domain_name
 # }
+
+# CloudWatch IAM Role for API Gateway Logging
+resource "aws_iam_role" "api_gateway_logs" {
+  name = "${var.project_name}-api-gateway-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "api_gateway_logs_policy" {
+  name = "${var.project_name}-api-gateway-logs-policy"
+  role = aws_iam_role.api_gateway_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Effect   = "Allow"
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
+# API Gateway Account - sets default CloudWatch role
+resource "aws_api_gateway_account" "main" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_logs.arn
+}

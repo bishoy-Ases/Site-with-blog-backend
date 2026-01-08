@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: eu-west-1
   AMPLIFY_APP_ID: ${{ secrets.AMPLIFY_APP_ID }}
   AMPLIFY_BRANCH: ${{ secrets.AMPLIFY_BRANCH }}
   AMPLIFY_POLL_SECONDS: 10
@@ -47,7 +47,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: us-east-1
+          aws-region: eu-west-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
