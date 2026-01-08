@@ -8,6 +8,8 @@ import { initGA, initFBPixel, loadAnalyticsSettings } from "./lib/analytics";
 import { useAnalytics } from "./hooks/use-analytics";
 import Home from "@/pages/home";
 import Admin from "@/pages/admin";
+import Blog from "@/pages/blog";
+import BlogPost from "@/pages/blog-post";
 import FoundationCalculator from "@/pages/foundation-calculator";
 import FinishingCalculator from "@/pages/finishing-calculator";
 import NotFound from "@/pages/not-found";
@@ -24,6 +26,10 @@ function Router() {
     <Switch>
       {/* Homepage route - main landing page with all sections */}
       <Route path="/" component={Home} />
+
+      {/* Blog routes - blog listing and individual posts */}
+      <Route path="/blog" component={Blog} />
+      <Route path="/blog/:slug" component={BlogPost} />
 
       {/* Calculator pages - pricing calculators for services */}
       <Route path="/calculator/foundation" component={FoundationCalculator} />

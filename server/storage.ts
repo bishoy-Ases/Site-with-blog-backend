@@ -4,6 +4,7 @@ import {
   projects,
   services,
   siteSettings,
+  blogPosts,
   type InsertSiteContent,
   type SiteContent,
   type InsertProject,
@@ -11,7 +12,9 @@ import {
   type InsertService,
   type Service,
   type InsertSiteSetting,
-  type SiteSetting
+  type SiteSetting,
+  type InsertBlogPost,
+  type BlogPost
 } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
@@ -39,6 +42,15 @@ export interface IStorage {
   getAllSettings(): Promise<SiteSetting[]>;
   getSetting(key: string): Promise<SiteSetting | undefined>;
   upsertSetting(setting: InsertSiteSetting): Promise<SiteSetting>;
+
+  // Blog Posts
+  getAllBlogPosts(): Promise<BlogPost[]>;
+  getPublishedBlogPosts(): Promise<BlogPost[]>;
+  getBlogPost(id: number): Promise<BlogPost | undefined>;
+  getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  updateBlogPost(id: number, updates: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
+  deleteBlogPost(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -147,6 +159,41 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  // Blog Posts
+  async getAllBlogPosts(): Promise<BlogPost[]> {
+    return await db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
+  }
+
+  async getPublishedBlogPosts(): Promise<BlogPost[]> {
+    return await db.select().from(blogPosts)
+      .where(eq(blogPosts.published, true))
+      .orderBy(desc(blogPosts.createdAt));
+  }
+
+  async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    return post;
+  }
+
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return post;
+  }
+
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    const [newPost] = await db.insert(blogPosts).values(post).returning();
+    return newPost;
+  }
+
+  async updateBlogPost(id: number, updates: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
+    const [updated] = await db.update(blogPosts).set(updates).where(eq(blogPosts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBlogPost(id: number): Promise<boolean> {
+    const result = await db.delete(blogPosts).where(eq(blogPosts.id, id)).returning();
+    return result.length > 0;
+  }
 }
 
 export const storage = new DatabaseStorage();

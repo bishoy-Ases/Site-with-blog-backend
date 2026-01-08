@@ -16,8 +16,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiUrl } from "@/lib/api";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import logoUrl from "@assets/⬇️_Download_1766924051122.png";
-import { ArrowLeft, ArrowRight, Plus, Pencil, Trash2, Settings as SettingsIcon, Home, Info, Phone, LogIn, LogOut, Save, Loader2 } from "lucide-react";
-import type { SiteContent, Project, InsertProject, Service, InsertService, SiteSetting, InsertSiteSetting } from "@shared/schema";
+import { ArrowLeft, ArrowRight, Plus, Pencil, Trash2, Settings as SettingsIcon, Home, Info, Phone, LogIn, LogOut, Save, Loader2, FileText } from "lucide-react";
+import type { SiteContent, Project, InsertProject, Service, InsertService, SiteSetting, InsertSiteSetting, BlogPost, InsertBlogPost } from "@shared/schema";
 
 const emptyProject: InsertProject = {
   titleAr: '',
@@ -34,6 +34,17 @@ const emptyService: InsertService = {
   descriptionAr: '',
   descriptionEn: '',
   featured: false,
+};
+
+const emptyBlogPost: InsertBlogPost = {
+  titleAr: '',
+  titleEn: '',
+  contentAr: '',
+  contentEn: '',
+  excerptAr: '',
+  excerptEn: '',
+  slug: '',
+  published: true,
 };
 
 function AboutEditor() {
@@ -755,6 +766,303 @@ function ServicesManager({ language, t }: { language: Language; t: typeof transl
   );
 }
 
+// Blog Manager Component
+function BlogManager({ language, t }: { language: Language; t: typeof translations['en'] }) {
+  const { toast } = useToast();
+  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [post, setPost] = useState<InsertBlogPost>(emptyBlogPost);
+
+  const { data: posts, isLoading } = useQuery<BlogPost[]>({
+    queryKey: ["/api/admin/blog"],
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: InsertBlogPost) => apiRequest("/api/blog", "POST", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/blog"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+      toast({ title: "Success", description: "Blog post created successfully" });
+      setIsCreating(false);
+      setPost(emptyBlogPost);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertBlogPost> }) =>
+      apiRequest(`/api/blog/${id}`, "PATCH", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/blog"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+      toast({ title: "Success", description: "Blog post updated successfully" });
+      setEditingPost(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/blog/${id}`, "DELETE", undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/blog"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/blog"] });
+      toast({ title: "Success", description: "Blog post deleted successfully" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingPost) {
+      updateMutation.mutate({ id: editingPost.id, data: post });
+    } else {
+      createMutation.mutate(post);
+    }
+  };
+
+  const startEdit = (item: BlogPost) => {
+    setEditingPost(item);
+    setIsCreating(false);
+    setPost({
+      titleAr: item.titleAr,
+      titleEn: item.titleEn,
+      contentAr: item.contentAr,
+      contentEn: item.contentEn,
+      excerptAr: item.excerptAr,
+      excerptEn: item.excerptEn,
+      slug: item.slug,
+      imageUrl: item.imageUrl,
+      published: item.published,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingPost(null);
+    setIsCreating(false);
+    setPost(emptyBlogPost);
+  };
+
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold mb-2">Manage Blog Posts</h2>
+          <p className="text-muted-foreground">
+            Create and publish blog posts for your website in both Arabic and English.
+          </p>
+        </div>
+        <Button onClick={() => setIsCreating(true)} disabled={isCreating || !!editingPost}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Blog Post
+        </Button>
+      </div>
+
+      {(isCreating || editingPost) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{editingPost ? 'Edit Blog Post' : 'Add New Blog Post'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Tabs defaultValue="english">
+                <TabsList>
+                  <TabsTrigger value="english">English</TabsTrigger>
+                  <TabsTrigger value="arabic">Arabic</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="english" className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Title (English)</Label>
+                      <Input
+                        value={post.titleEn}
+                        onChange={(e) => {
+                          setPost({ ...post, titleEn: e.target.value });
+                          if (!editingPost && !post.slug) {
+                            setPost({ ...post, titleEn: e.target.value, slug: generateSlug(e.target.value) });
+                          }
+                        }}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Slug (URL)</Label>
+                      <Input
+                        value={post.slug}
+                        onChange={(e) => setPost({ ...post, slug: generateSlug(e.target.value) })}
+                        required
+                        placeholder="my-blog-post-slug"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Excerpt (English)</Label>
+                    <Textarea
+                      value={post.excerptEn}
+                      onChange={(e) => setPost({ ...post, excerptEn: e.target.value })}
+                      rows={2}
+                      required
+                      placeholder="A brief summary of the blog post..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Content (English)</Label>
+                    <Textarea
+                      value={post.contentEn}
+                      onChange={(e) => setPost({ ...post, contentEn: e.target.value })}
+                      rows={10}
+                      required
+                      placeholder="Full blog post content..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Image URL (Optional)</Label>
+                    <Input
+                      value={post.imageUrl || ''}
+                      onChange={(e) => setPost({ ...post, imageUrl: e.target.value })}
+                      placeholder="https://example.com/image.jpg"
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="arabic" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>العنوان (عربي)</Label>
+                    <Input
+                      dir="rtl"
+                      value={post.titleAr}
+                      onChange={(e) => setPost({ ...post, titleAr: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>الملخص (عربي)</Label>
+                    <Textarea
+                      dir="rtl"
+                      value={post.excerptAr}
+                      onChange={(e) => setPost({ ...post, excerptAr: e.target.value })}
+                      rows={2}
+                      required
+                      placeholder="ملخص قصير للمقال..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>المحتوى (عربي)</Label>
+                    <Textarea
+                      dir="rtl"
+                      value={post.contentAr}
+                      onChange={(e) => setPost({ ...post, contentAr: e.target.value })}
+                      rows={10}
+                      required
+                      placeholder="محتوى المقال بالكامل..."
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="post-published"
+                      checked={post.published}
+                      onChange={(e) => setPost({ ...post, published: e.target.checked })}
+                    />
+                    <Label htmlFor="post-published">منشور (Published)</Label>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex gap-2 pt-4 border-t">
+                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      {editingPost ? 'Update Post' : 'Create Post'}
+                    </>
+                  )}
+                </Button>
+                <Button type="button" variant="outline" onClick={cancelEdit}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+          </div>
+        ) : posts && posts.length > 0 ? (
+          posts.map((item) => (
+            <Card key={item.id}>
+              <CardContent className="flex items-start justify-between p-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    {language === 'ar' ? item.titleAr : item.titleEn}
+                    {!item.published && <span className="text-xs bg-yellow-500 text-white px-2 py-1 rounded">Draft</span>}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {language === 'ar' ? item.excerptAr : item.excerptEn}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs bg-secondary px-2 py-1 rounded">/blog/{item.slug}</span>
+                    {item.createdAt && (
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => startEdit(item)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this blog post?')) {
+                        deleteMutation.mutate(item.id);
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            No blog posts found. Create your first blog post to get started.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Settings Manager Component
 function SettingsManager({ language, t }: { language: Language; t: typeof translations['en'] }) {
   const { toast } = useToast();
@@ -1061,8 +1369,9 @@ export default function Admin() {
           </div>
 
           <Tabs defaultValue="content" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="content" data-testid="tab-content">Site Content</TabsTrigger>
+              <TabsTrigger value="blog" data-testid="tab-blog">Blog</TabsTrigger>
               <TabsTrigger value="projects" data-testid="tab-projects">Projects</TabsTrigger>
               <TabsTrigger value="services" data-testid="tab-services">Services</TabsTrigger>
               <TabsTrigger value="settings" data-testid="tab-settings">Settings</TabsTrigger>
@@ -1078,6 +1387,10 @@ export default function Admin() {
               <HeroEditor />
               <AboutEditor />
               <ContactEditor />
+            </TabsContent>
+
+            <TabsContent value="blog">
+              <BlogManager language={language} t={t} />
             </TabsContent>
 
             {/* Store tab and content removed */}
