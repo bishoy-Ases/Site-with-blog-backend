@@ -17,20 +17,19 @@ resource "aws_db_instance" "blog_db" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  # High availability options
-  multi_az               = var.environment == "prod" ? true : false
+  # High availability options - DISABLED FOR FREE TIER
+  multi_az               = false  # Free tier: single AZ only
   publicly_accessible    = false
-  backup_retention_period = 7
+  backup_retention_period = 1  # Free tier: 1 day only
   backup_window          = "03:00-04:00"
   maintenance_window     = "mon:04:00-mon:05:00"
 
-  # Performance Insights
+  # Performance Insights - DISABLED FOR FREE TIER
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-  performance_insights_enabled    = true
-  performance_insights_retention_period = 7
+  performance_insights_enabled    = false  # Free tier: not included
 
   # Delete protection
-  deletion_protection = var.environment == "prod" ? true : false
+  deletion_protection = false  # Free tier: allow deletion
   skip_final_snapshot = var.environment != "prod"
   final_snapshot_identifier = var.environment == "prod" ? "${var.project_name}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}" : null
 
@@ -42,49 +41,53 @@ resource "aws_db_instance" "blog_db" {
   }
 }
 
-# Secrets Manager for Database Credentials
-resource "aws_secretsmanager_secret" "db_credentials" {
-  name                    = "${var.project_name}-db-credentials"
-  description             = "Database credentials for ${var.project_name}"
-  recovery_window_in_days = 7
+# AWS Systems Manager Parameter Store for Database Credentials - FREE TIER
+# Parameter Store is completely free (no cost for standard parameters)
+resource "aws_ssm_parameter" "db_connection_string" {
+  name        = "/${var.project_name}/database/connection-string"
+  description = "PostgreSQL connection string for ${var.project_name}"
+  type        = "SecureString"
+  value       = "postgresql://${aws_db_instance.blog_db.username}:${var.db_password}@${aws_db_instance.blog_db.endpoint}/${aws_db_instance.blog_db.db_name}"
 
   tags = {
-    Name = "${var.project_name}-db-credentials"
+    Name = "${var.project_name}-db-connection-string"
   }
 }
 
-resource "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = aws_secretsmanager_secret.db_credentials.id
-  secret_string = jsonencode({
-    username = aws_db_instance.blog_db.username
-    password = var.db_password
-    engine   = "postgres"
-    host     = aws_db_instance.blog_db.endpoint
-    port     = 5432
-    dbname   = aws_db_instance.blog_db.db_name
-    # Connection string for Drizzle ORM
-    DATABASE_URL = "postgresql://${aws_db_instance.blog_db.username}:${var.db_password}@${aws_db_instance.blog_db.endpoint}/${aws_db_instance.blog_db.db_name}"
-  })
-}
+resource "aws_ssm_parameter" "db_host" {
+  name        = "/${var.project_name}/database/host"
+  description = "PostgreSQL host for ${var.project_name}"
+  type        = "String"
+  value       = aws_db_instance.blog_db.endpoint
 
-# CloudWatch Alarms for RDS
-resource "aws_cloudwatch_metric_alarm" "database_cpu" {
-  alarm_name          = "${var.project_name}-db-cpu-utilization"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 2
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/RDS"
-  period              = 300
-  statistic           = "Average"
-  threshold           = 80
-  alarm_description   = "This metric monitors database CPU utilization"
-  alarm_actions       = [] # Add SNS topic ARN for notifications
-
-  dimensions = {
-    DBInstanceIdentifier = aws_db_instance.blog_db.id
+  tags = {
+    Name = "${var.project_name}-db-host"
   }
 }
 
+resource "aws_ssm_parameter" "db_username" {
+  name        = "/${var.project_name}/database/username"
+  description = "PostgreSQL username for ${var.project_name}"
+  type        = "String"
+  value       = aws_db_instance.blog_db.username
+
+  tags = {
+    Name = "${var.project_name}-db-username"
+  }
+}
+
+resource "aws_ssm_parameter" "db_password" {
+  name        = "/${var.project_name}/database/password"
+  description = "PostgreSQL password for ${var.project_name}"
+  type        = "SecureString"
+  value       = var.db_password
+
+  tags = {
+    Name = "${var.project_name}-db-password"
+  }
+}
+
+# CloudWatch Alarms for RDS - SIMPLIFIED FOR FREE TIER
 resource "aws_cloudwatch_metric_alarm" "database_storage" {
   alarm_name          = "${var.project_name}-db-storage-space"
   comparison_operator = "LessThanThreshold"
@@ -93,8 +96,8 @@ resource "aws_cloudwatch_metric_alarm" "database_storage" {
   namespace           = "AWS/RDS"
   period              = 300
   statistic           = "Average"
-  threshold           = 5000000000 # 5 GB
-  alarm_description   = "This metric monitors database free storage space"
+  threshold           = 1000000000 # 1 GB warning (more strict for free tier)
+  alarm_description   = "Alert when database storage is running low"
   alarm_actions       = [] # Add SNS topic ARN for notifications
 
   dimensions = {

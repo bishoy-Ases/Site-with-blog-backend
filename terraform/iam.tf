@@ -32,10 +32,11 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# Custom Policy for Secrets Manager Access
-resource "aws_iam_policy" "lambda_secrets" {
-  name        = "${var.project_name}-lambda-secrets-policy"
-  description = "Allow Lambda to read database credentials from Secrets Manager"
+# Custom Policy for Parameter Store Access - FREE TIER
+# Parameter Store API calls are free
+resource "aws_iam_policy" "lambda_parameter_store" {
+  name        = "${var.project_name}-lambda-parameter-store-policy"
+  description = "Allow Lambda to read database credentials from Parameter Store"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -43,18 +44,18 @@ resource "aws_iam_policy" "lambda_secrets" {
       {
         Effect = "Allow"
         Action = [
-          "secretsmanager:GetSecretValue",
-          "secretsmanager:DescribeSecret"
+          "ssm:GetParameter",
+          "ssm:GetParameters"
         ]
-        Resource = aws_secretsmanager_secret.db_credentials.arn
+        Resource = "arn:aws:ssm:*:*:parameter/${var.project_name}/database/*"
       }
     ]
   })
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_secrets" {
+resource "aws_iam_role_policy_attachment" "lambda_parameter_store" {
   role       = aws_iam_role.lambda_execution.name
-  policy_arn = aws_iam_policy.lambda_secrets.arn
+  policy_arn = aws_iam_policy.lambda_parameter_store.arn
 }
 
 # CloudWatch Logs Policy

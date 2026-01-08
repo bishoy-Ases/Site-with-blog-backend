@@ -6,8 +6,8 @@ resource "aws_lambda_function" "blog_api" {
   handler         = "index.handler"
   source_code_hash = filebase64sha256("${path.module}/../lambda-package.zip")
   runtime         = var.lambda_runtime
-  memory_size     = var.lambda_memory_size
-  timeout         = var.lambda_timeout
+  memory_size     = var.lambda_memory_size  # Default: 256MB (free tier: 128-3008MB, 1M free requests/month)
+  timeout         = var.lambda_timeout      # Default: 15s (free tier: ok)
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
@@ -17,14 +17,15 @@ resource "aws_lambda_function" "blog_api" {
   environment {
     variables = {
       NODE_ENV                = var.environment
-      DB_SECRET_ARN          = aws_secretsmanager_secret.db_credentials.arn
+      PROJECT_NAME            = var.project_name
+      DB_NAME                 = var.db_name
       AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
     }
   }
 
-  # Enable X-Ray tracing
+  # Tracing disabled for free tier
   tracing_config {
-    mode = "Active"
+    mode = "PassThrough"  # Free tier: no additional charges
   }
 
   tags = {
@@ -34,15 +35,15 @@ resource "aws_lambda_function" "blog_api" {
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic,
     aws_iam_role_policy_attachment.lambda_vpc,
-    aws_iam_role_policy_attachment.lambda_secrets,
+    aws_iam_role_policy_attachment.lambda_parameter_store,
     aws_cloudwatch_log_group.lambda_logs
   ]
 }
 
-# CloudWatch Log Group for Lambda
+# CloudWatch Log Group for Lambda - OPTIMIZED FOR FREE TIER
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${var.project_name}-api"
-  retention_in_days = 14
+  retention_in_days = 7  # Free tier: reduced from 14 to 7 days
 
   tags = {
     Name = "${var.project_name}-lambda-logs"

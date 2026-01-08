@@ -56,15 +56,15 @@ variable "lambda_runtime" {
 }
 
 variable "lambda_memory_size" {
-  description = "Lambda memory size in MB"
+  description = "Lambda memory size in MB (free tier: included up to 1M requests/month)"
   type        = number
-  default     = 512
+  default     = 256  # Free tier: reduced from 512 to save compute time
 }
 
 variable "lambda_timeout" {
-  description = "Lambda timeout in seconds"
+  description = "Lambda timeout in seconds (free tier: ok with shorter timeout)"
   type        = number
-  default     = 30
+  default     = 15  # Free tier: reduced from 30
 }
 
 # Amplify Frontend URL
