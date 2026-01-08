@@ -117,29 +117,6 @@ export const insertSiteSettingSchema = createInsertSchema(siteSettings).omit({
 export type InsertSiteSetting = z.infer<typeof insertSiteSettingSchema>;
 export type SiteSetting = typeof siteSettings.$inferSelect;
 
-// Blog Posts Schema
-export const blogPosts = sqliteTable("blog_posts", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  titleAr: text("title_ar").notNull(),
-  titleEn: text("title_en").notNull(),
-  contentAr: text("content_ar").notNull(),
-  contentEn: text("content_en").notNull(),
-  excerptAr: text("excerpt_ar").notNull(),
-  excerptEn: text("excerpt_en").notNull(),
-  slug: text("slug").notNull().unique(),
-  imageUrl: text("image_url"),
-  published: integer("published", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
-
-export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
-export type BlogPost = typeof blogPosts.$inferSelect;
-
 // API Contract Types
 export type SiteContentResponse = SiteContent;
 export type SiteContentListResponse = SiteContent[];
