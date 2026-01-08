@@ -1,0 +1,72 @@
+name: Build & Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type checking
+        run: npm run check
+
+      - name: Build application
+        run: npm run build
+
+      - name: Build Lambda package
+        run: chmod +x scripts/build-lambda.sh && ./scripts/build-lambda.sh
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        run: cd terraform && terraform init
+
+      - name: Terraform Plan
+        run: cd terraform && terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: cd terraform && terraform apply -auto-approve tfplan
+
+      - name: Get API Gateway URL
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: cd terraform && terraform output -raw api_gateway_url
+
+      - name: Upload Lambda package artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: lambda-package
+          path: lambda-package.zip
+          retention-days: 7
