@@ -18,11 +18,30 @@ import { apiUrl } from "@/lib/api";
 const GA_MEASUREMENT_ID = 'G-WDRD35B2HV';
 
 /**
- * Load analytics settings from database
+ * Load analytics settings from database or use defaults
+ * Falls back to hardcoded values if no API backend is available
  */
 export async function loadAnalyticsSettings() {
+  // Check if API is available
+  const apiBase = import.meta.env.VITE_API_BASE_URL;
+  
+  if (!apiBase) {
+    // No backend API, use defaults
+    window.__ANALYTICS_SETTINGS__ = {
+      ga_measurement_id: GA_MEASUREMENT_ID,
+    };
+    return;
+  }
+
   try {
-    const response = await fetch(apiUrl('/api/settings'));
+    const response = await fetch(apiUrl('/api/settings'), { 
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+    
     const settings = await response.json();
     
     window.__ANALYTICS_SETTINGS__ = {
@@ -30,7 +49,7 @@ export async function loadAnalyticsSettings() {
       ga_measurement_id: settings.find((s: any) => s.settingKey === 'ga_measurement_id')?.settingValue || GA_MEASUREMENT_ID,
     };
   } catch (error) {
-    console.error('Failed to load analytics settings:', error);
+    console.warn('Analytics API not available, using defaults:', error);
     window.__ANALYTICS_SETTINGS__ = {
       ga_measurement_id: GA_MEASUREMENT_ID,
     };
