@@ -1,12 +1,15 @@
 import { db } from "./db";
 import { 
   siteContent,
+  blogPosts,
   projects,
   services,
   siteSettings,
   blogPosts,
   type InsertSiteContent,
   type SiteContent,
+  type InsertBlogPost,
+  type BlogPost,
   type InsertProject,
   type Project,
   type InsertService,
@@ -23,6 +26,14 @@ export interface IStorage {
   getAllSiteContent(): Promise<SiteContent[]>;
   getSiteContent(sectionKey: string): Promise<SiteContent | undefined>;
   upsertSiteContent(content: InsertSiteContent): Promise<SiteContent>;
+
+  // Blog Posts
+  getBlogPosts(publishedOnly?: boolean): Promise<BlogPost[]>;
+  getBlogPost(id: number): Promise<BlogPost | undefined>;
+  getBlogPostBySlug(slug: string): Promise<BlogPost | undefined>;
+  createBlogPost(post: InsertBlogPost): Promise<BlogPost>;
+  updateBlogPost(id: number, updates: Partial<InsertBlogPost>): Promise<BlogPost | undefined>;
+  deleteBlogPost(id: number): Promise<boolean>;
 
   // Projects
   getProjects(): Promise<Project[]>;
@@ -78,6 +89,40 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return result;
+  }
+
+  // Blog Posts
+  async getBlogPosts(publishedOnly = false): Promise<BlogPost[]> {
+    const query = db.select().from(blogPosts).orderBy(desc(blogPosts.createdAt));
+    if (publishedOnly) {
+      return await query.where(eq(blogPosts.published, true));
+    }
+    return await query;
+  }
+
+  async getBlogPost(id: number): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
+    return post;
+  }
+
+  async getBlogPostBySlug(slug: string): Promise<BlogPost | undefined> {
+    const [post] = await db.select().from(blogPosts).where(eq(blogPosts.slug, slug));
+    return post;
+  }
+
+  async createBlogPost(post: InsertBlogPost): Promise<BlogPost> {
+    const [newPost] = await db.insert(blogPosts).values(post).returning();
+    return newPost;
+  }
+
+  async updateBlogPost(id: number, updates: Partial<InsertBlogPost>): Promise<BlogPost | undefined> {
+    const [updated] = await db.update(blogPosts).set(updates).where(eq(blogPosts.id, id)).returning();
+    return updated;
+  }
+
+  async deleteBlogPost(id: number): Promise<boolean> {
+    const result = await db.delete(blogPosts).where(eq(blogPosts.id, id)).returning();
+    return result.length > 0;
   }
 
   // Projects

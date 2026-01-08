@@ -5,6 +5,29 @@ import { z } from "zod";
 // Re-export auth schema (users and sessions tables)
 export * from "./models/auth";
 
+// Blog Posts Schema
+export const blogPosts = sqliteTable("blog_posts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  titleAr: text("title_ar").notNull(),
+  titleEn: text("title_en").notNull(),
+  contentAr: text("content_ar").notNull(),
+  contentEn: text("content_en").notNull(),
+  excerptAr: text("excerpt_ar").notNull(),
+  excerptEn: text("excerpt_en").notNull(),
+  slug: text("slug").notNull().unique(),
+  imageUrl: text("image_url"),
+  published: integer("published", { mode: "boolean" }).default(true),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertBlogPost = z.infer<typeof insertBlogPostSchema>;
+export type BlogPost = typeof blogPosts.$inferSelect;
+
 // Site Content Schema - for editable website content
 export const siteContent = sqliteTable("site_content", {
   id: integer("id").primaryKey({ autoIncrement: true }),

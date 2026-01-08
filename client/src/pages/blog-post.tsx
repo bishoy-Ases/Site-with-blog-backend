@@ -1,202 +1,174 @@
 import { useQuery } from "@tanstack/react-query";
-import { useRoute, Link } from "wouter";
-import type { BlogPost } from "@shared/schema";
-import { translations, getDirection } from "@/lib/i18n";
-import { useSEO } from "@/hooks/use-seo";
-import { useBreadcrumbStructuredData } from "@/hooks/use-breadcrumb-structured-data";
-import { Card, CardContent } from "@/components/ui/card";
+import { Link, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Calendar, ArrowLeft, ArrowRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageToggle } from "@/components/language-toggle";
+import { translations, getDirection, type Language } from "@/lib/i18n";
+import { useSEO } from "@/hooks/use-seo";
+import { useState, useEffect } from "react";
+import { ArrowLeft, ArrowRight, Calendar, User } from "lucide-react";
+import logoUrl from "@assets/⬇️_Download_1766924051122.png";
+import type { BlogPost } from "@shared/schema";
 
-export default function BlogPost() {
-  const [, params] = useRoute("/blog/:slug");
-  const slug = params?.slug;
-  const currentLang = localStorage.getItem("language") || "ar";
-  const t = translations[currentLang];
-  const direction = getDirection(currentLang);
+export default function BlogPostPage() {
+  const { slug } = useParams();
+  const [language, setLanguage] = useState<Language>(() => {
+    const stored = localStorage.getItem('language') as Language | null;
+    return stored === 'ar' ? 'ar' : 'en';
+  });
+  
+  const t = translations[language];
+  const dir = getDirection(language);
 
-  // Fetch blog post by slug
-  const { data: post, isLoading, error } = useQuery<BlogPost>({
-    queryKey: [`/api/blog/${slug}`],
+  useEffect(() => {
+    document.documentElement.dir = dir;
+    document.documentElement.lang = language;
+    localStorage.setItem('language', language);
+  }, [language, dir]);
+
+  const toggleLanguage = () => {
+    setLanguage(prev => prev === 'ar' ? 'en' : 'ar');
+  };
+
+  const { data: post, isLoading } = useQuery<BlogPost>({
+    queryKey: [`/api/blog/slug/${slug}`],
     enabled: !!slug,
   });
 
-  // SEO metadata
   useSEO({
-    title: post ? (currentLang === "ar" ? post.titleAr : post.titleEn) : t.blog.title,
-    description: post ? (currentLang === "ar" ? post.excerptAr : post.excerptEn) : t.blog.description,
-    keywords: post ? `${currentLang === "ar" ? post.titleAr : post.titleEn}, كهرباء, electrical` : "blog, electrical",
-    image: post?.imageUrl,
+    title: post
+      ? language === 'ar' ? post.titleAr : post.titleEn
+      : language === 'ar' ? 'مقال' : 'Blog Post',
+    description: post
+      ? language === 'ar' ? post.excerptAr : post.excerptEn
+      : language === 'ar' ? 'اقرأ أحدث مقالاتنا' : 'Read our latest blog post',
+    ogImage: post?.imageUrl ? post.imageUrl : undefined,
+    ogType: 'article',
   });
 
-  // Breadcrumb structured data
-  useBreadcrumbStructuredData([
-    { name: currentLang === "ar" ? "الرئيسية" : "Home", url: "https://aseskahraba.com/" },
-    { name: t.blog.title, url: "https://aseskahraba.com/blog" },
-    { 
-      name: post ? (currentLang === "ar" ? post.titleAr : post.titleEn) : "", 
-      url: `https://aseskahraba.com/blog/${slug}` 
-    },
-  ]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background" dir={direction}>
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">{t.common.loading}...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !post) {
-    return (
-      <div className="min-h-screen bg-background" dir={direction}>
-        <div className="container mx-auto px-4 py-12">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">
-              {currentLang === "ar" ? "المقال غير موجود" : "Post Not Found"}
-            </h1>
-            <Link href="/blog">
-              <Button variant="default">
-                {currentLang === "ar" ? "العودة للمدونة" : "Back to Blog"}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const title = currentLang === "ar" ? post.titleAr : post.titleEn;
-  const content = currentLang === "ar" ? post.contentAr : post.contentEn;
+  const BackArrow = language === 'ar' ? ArrowRight : ArrowLeft;
 
   return (
-    <div className="min-h-screen bg-background" dir={direction}>
-      {/* Back to Blog Button */}
-      <section className="border-b bg-muted/30">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-background" dir={dir}>
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-16 gap-4">
+            <Link href="/">
+              <img 
+                src={logoUrl} 
+                alt="Ases Kahraba" 
+                className="h-10 w-auto cursor-pointer rounded-md bg-[#f9f7f3] dark:brightness-110"
+              />
+            </Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              <LanguageToggle language={language} onToggle={toggleLanguage} />
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="py-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          {/* Back to Blog */}
           <Link href="/blog">
-            <Button variant="ghost" size="sm">
-              {currentLang === "ar" ? (
-                <>
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                  {t.blog.backToBlog || "العودة للمدونة"}
-                </>
-              ) : (
-                <>
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t.blog.backToBlog || "Back to Blog"}
-                </>
-              )}
+            <Button variant="ghost" size="sm" className="mb-6">
+              <BackArrow className="w-4 h-4 me-2" />
+              {language === 'ar' ? 'العودة للمدونة' : 'Back to Blog'}
             </Button>
           </Link>
-        </div>
-      </section>
 
-      {/* Blog Post Content */}
-      <article className="py-12">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            {/* Featured Image */}
-            {post.imageUrl && (
-              <div className="aspect-video overflow-hidden rounded-lg mb-8">
-                <img
-                  src={post.imageUrl}
-                  alt={title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              {title}
-            </h1>
-
-            {/* Metadata */}
-            <div className="flex items-center gap-4 text-muted-foreground mb-8 pb-8 border-b">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <time dateTime={post.createdAt?.toISOString()}>
-                  {post.createdAt
-                    ? new Date(post.createdAt).toLocaleDateString(
-                        currentLang === "ar" ? "ar-EG" : "en-US",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )
-                    : ""}
-                </time>
-              </div>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-3/4" />
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
             </div>
-
-            {/* Content */}
-            <Card>
-              <CardContent className="prose prose-lg dark:prose-invert max-w-none pt-6">
-                <div 
-                  className="whitespace-pre-wrap leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: content }}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Back to Blog Footer */}
-            <div className="mt-12 text-center">
-              <Link href="/blog">
-                <Button variant="outline" size="lg">
-                  {currentLang === "ar" ? (
-                    <>
-                      <ArrowRight className="w-4 h-4 mr-2" />
-                      {t.blog.backToBlog || "العودة للمدونة"}
-                    </>
-                  ) : (
-                    <>
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      {t.blog.backToBlog || "Back to Blog"}
-                    </>
+          ) : post ? (
+            <article className="prose prose-lg dark:prose-invert max-w-none">
+              {/* Post Header */}
+              <div className="mb-8">
+                <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                  {language === 'ar' ? post.titleAr : post.titleEn}
+                </h1>
+                
+                <div className="flex items-center gap-4 text-muted-foreground text-sm">
+                  {post.createdAt && (
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 me-2" />
+                      {new Date(post.createdAt).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </div>
                   )}
+                  <div className="flex items-center">
+                    <User className="w-4 h-4 me-2" />
+                    {language === 'ar' ? 'أسس كهربا' : 'Ases Kahraba'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Featured Image */}
+              {post.imageUrl && (
+                <div className="mb-8 rounded-lg overflow-hidden">
+                  <img 
+                    src={post.imageUrl} 
+                    alt={language === 'ar' ? post.titleAr : post.titleEn}
+                    className="w-full h-auto object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Post Content */}
+              <div className="whitespace-pre-wrap text-foreground leading-relaxed">
+                {language === 'ar' ? post.contentAr : post.contentEn}
+              </div>
+
+              {/* Call to Action */}
+              <div className="mt-12 p-6 bg-muted rounded-lg text-center">
+                <h3 className="text-2xl font-bold mb-2">
+                  {language === 'ar' ? 'هل تحتاج إلى مساعدة؟' : 'Need Help?'}
+                </h3>
+                <p className="text-muted-foreground mb-4">
+                  {language === 'ar' 
+                    ? 'تواصل معنا للحصول على استشارة مجانية'
+                    : 'Contact us for a free consultation'}
+                </p>
+                <Link href="/#contact">
+                  <Button size="lg">
+                    {language === 'ar' ? 'تواصل معنا' : 'Contact Us'}
+                  </Button>
+                </Link>
+              </div>
+            </article>
+          ) : (
+            <div className="text-center py-24">
+              <h1 className="text-3xl font-bold mb-4">
+                {language === 'ar' ? 'المقال غير موجود' : 'Post Not Found'}
+              </h1>
+              <p className="text-muted-foreground mb-6">
+                {language === 'ar' 
+                  ? 'عذراً، لم نتمكن من العثور على هذا المقال'
+                  : 'Sorry, we couldn\'t find this blog post'}
+              </p>
+              <Link href="/blog">
+                <Button>
+                  <BackArrow className="w-4 h-4 me-2" />
+                  {language === 'ar' ? 'العودة للمدونة' : 'Back to Blog'}
                 </Button>
               </Link>
             </div>
-          </div>
+          )}
         </div>
-      </article>
-
-      {/* Structured Data for Blog Post */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "BlogPosting",
-            headline: title,
-            image: post.imageUrl ? [post.imageUrl] : [],
-            datePublished: post.createdAt?.toISOString(),
-            dateModified: post.createdAt?.toISOString(),
-            author: {
-              "@type": "Organization",
-              name: "Ases Kahraba",
-              url: "https://aseskahraba.com",
-            },
-            publisher: {
-              "@type": "Organization",
-              name: "Ases Kahraba",
-              url: "https://aseskahraba.com",
-            },
-            description: currentLang === "ar" ? post.excerptAr : post.excerptEn,
-            mainEntityOfPage: {
-              "@type": "WebPage",
-              "@id": `https://aseskahraba.com/blog/${post.slug}`,
-            },
-          }),
-        }}
-      />
+      </main>
     </div>
   );
 }

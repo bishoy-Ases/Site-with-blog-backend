@@ -1,0 +1,359 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: 'Ases Kahraba - Serverless architecture: Lambda + API Gateway + S3 + CloudFront + RDS'
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs20.x
+    Environment:
+      Variables:
+        NODE_ENV: production
+        TRUST_PROXY: '1'
+
+Parameters:
+  DBName:
+    Type: String
+    Default: aseskahraba
+    Description: RDS Database name
+  DBMasterUsername:
+    Type: String
+    Default: postgres
+    Description: RDS Master username
+  DBMasterPassword:
+    Type: String
+    NoEcho: true
+    Description: RDS Master password (at least 8 characters)
+  AdminPassword:
+    Type: String
+    NoEcho: true
+    Description: Admin login password
+  DomainName:
+    Type: String
+    Default: blog.aseskahraba.com
+    Description: Custom domain name (optional, for Route53)
+
+Conditions:
+  HasDomainName: !Not [!Equals [!Ref DomainName, '']]
+
+Resources:
+  # ========== S3 Bucket for Static Files ==========
+  StaticFilesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'ases-kahraba-static-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  # S3 Bucket Policy for CloudFront OAI
+  StaticFilesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StaticFilesBucket
+      PolicyText:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${StaticFilesBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                'AWS:SourceArn': !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # ========== CloudFront Distribution ==========
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Comment: Ases Kahraba Static Files CDN
+        Origins:
+          - DomainName: !GetAtt StaticFilesBucket.RegionalDomainName
+            Id: S3Origin
+            S3OriginConfig: {}
+          - DomainName: !Sub '${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+            Id: APIOrigin
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+          Compress: true
+        CacheBehaviors:
+          - PathPattern: '/api/*'
+            TargetOriginId: APIOrigin
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachePolicyId: 4135ea3d-c35d-46eb-81d7-reused7ebb93 # Managed-CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-49b7-90a7-10861bb84716 # Managed-AllViewerExceptHostHeader
+        HttpVersion: http2and3
+        Tags:
+          - Key: Application
+            Value: AsesKahraba
+
+  # ========== Lambda Function for API ==========
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ases-kahraba-api
+      CodeUri: .
+      Handler: dist/index.handler
+      Runtime: nodejs20.x
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          NODE_ENV: production
+          DATABASE_URL: !Sub 'postgresql://${DBMasterUsername}:${DBMasterPassword}@${DBInstance.Endpoint.Address}:5432/${DBName}'
+          ADMIN_PASSWORD: !Ref AdminPassword
+          SESSION_SECRET: !Sub '{{resolve:secretsmanager:ases-kahraba-session-secret:SecretString:secret}}'
+          JWT_SECRET: !Sub '{{resolve:secretsmanager:ases-kahraba-jwt-secret:SecretString:secret}}'
+          TRUST_PROXY: '1'
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ec2:CreateNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - ec2:DeleteNetworkInterface
+              Resource: '*'
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGateway
+            Path: '/{proxy+}'
+            Method: ANY
+            RequestParameters:
+              - method.request.path.proxy
+
+  # ========== API Gateway ==========
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ases-kahraba-api
+      Description: Ases Kahraba API Gateway
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Root Resource Proxy
+  ProxyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: '{proxy+}'
+
+  # API Gateway Method
+  ProxyMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ProxyResource
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ApiFunction.Arn}/invocations'
+
+  # API Gateway Lambda Permission
+  ApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ApiFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ProxyMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: prod
+
+  # ========== RDS PostgreSQL Instance ==========
+  # Security Group for RDS
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS Security Group for Ases Kahraba
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  # RDS Subnet Group
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS
+      SubnetIds:
+        - !Ref PrivateSubnet
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  # RDS Instance (free tier: db.t3.micro, 20GB storage)
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: ases-kahraba-db
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      EngineVersion: '15.3'
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterPassword
+      AllocatedStorage: '20'
+      StorageType: gp2
+      StorageEncrypted: false # Free tier
+      DBName: !Ref DBName
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      MultiAZ: false # Free tier
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+      EnableCloudwatchLogsExports:
+        - postgresql
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  # ========== VPC & Networking (for Lambda + RDS) ==========
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Lambda Security Group
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Application
+          Value: AsesKahraba
+
+  # ========== Secrets Manager (for JWT & Session Secrets) ==========
+  JwtSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: ases-kahraba-jwt-secret
+      SecretString: !Sub |
+        {
+          "secret": "${AWS::StackId}-jwt-${AWS::AccountId}"
+        }
+      Description: JWT secret for Ases Kahraba
+
+  SessionSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: ases-kahraba-session-secret
+      SecretString: !Sub |
+        {
+          "secret": "${AWS::StackId}-session-${AWS::AccountId}"
+        }
+      Description: Session secret for Ases Kahraba
+
+Outputs:
+  ApiGatewayEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiEndpoint'
+
+  CloudFrontDomain:
+    Description: CloudFront distribution domain
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDomain'
+
+  S3BucketName:
+    Description: S3 bucket for static files
+    Value: !Ref StaticFilesBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-S3Bucket'
+
+  LambdaFunctionName:
+    Description: Lambda function name
+    Value: !Ref ApiFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaFunction'
+
+  DBEndpoint:
+    Description: RDS Database endpoint
+    Value: !GetAtt DBInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-DBEndpoint'
+
+  Instructions:
+    Description: Next steps
+    Value: |
+      1. Deploy: sam deploy --guided
+      2. Upload static files: npm run deploy:s3 -- <s3-bucket> <distribution-id>
+      3. Update DNS: Point blog.aseskahraba.com CNAME to CloudFront domain
+      4. Update client: Set VITE_API_BASE_URL to API Gateway endpoint
