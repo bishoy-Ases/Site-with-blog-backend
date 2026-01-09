@@ -20,7 +20,7 @@ resource "aws_internet_gateway" "main" {
 
 # Public Subnets
 resource "aws_subnet" "public" {
-  count             = length(var.availability_zones)
+  count             = 2
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index)
   availability_zone = var.availability_zones[count.index]
@@ -35,7 +35,7 @@ resource "aws_subnet" "public" {
 
 # Private Subnets (for RDS and Lambda)
 resource "aws_subnet" "private" {
-  count             = length(var.availability_zones)
+  count             = 2
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 10)
   availability_zone = var.availability_zones[count.index]
@@ -76,13 +76,13 @@ resource "aws_route_table" "private" {
 
 # Route Table Associations
 resource "aws_route_table_association" "public" {
-  count          = length(aws_subnet.public)
+  count          = 2
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
 resource "aws_route_table_association" "private" {
-  count          = length(aws_subnet.private)
+  count          = 2
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private.id
 }

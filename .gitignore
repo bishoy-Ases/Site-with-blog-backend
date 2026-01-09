@@ -4,3 +4,12 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Env files and local databases
+.env
+.env.*
+dev.db
+*.db
+
+# Terraform local state/cache
+terraform/.terraform/
