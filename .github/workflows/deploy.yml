@@ -1,0 +1,58 @@
+name: Deploy WordPress to EC2 (free tier)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Trust host key
+        run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync project to EC2
+        run: rsync -az --delete ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress
+
+      - name: Write .env on EC2
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          cd /opt/wordpress
+          cat > .env <<EOT
+          WORDPRESS_DB_HOST=${RDS_ENDPOINT}
+          WORDPRESS_DB_NAME=${RDS_DB}
+          WORDPRESS_DB_USER=${RDS_USER}
+          WORDPRESS_DB_PASSWORD=${RDS_PASS}
+          WORDPRESS_TABLE_PREFIX=wp_
+          WORDPRESS_DEBUG=false
+          WORDPRESS_CONFIG_EXTRA="define('WP_HOME','${WP_HOME}'); define('WP_SITEURL','${WP_SITEURL}');"
+          EOT
+          EOF
+        env:
+          RDS_ENDPOINT: ${{ secrets.RDS_ENDPOINT }}
+          RDS_DB: ${{ secrets.RDS_DB }}
+          RDS_USER: ${{ secrets.RDS_USER }}
+          RDS_PASS: ${{ secrets.RDS_PASS }}
+          WP_HOME: ${{ secrets.WP_HOME }}
+          WP_SITEURL: ${{ secrets.WP_SITEURL }}
+
+      - name: Deploy stack
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          cd /opt/wordpress
+          docker compose pull
+          docker compose up -d --remove-orphans
+          docker system prune -f
+          EOF
+
+      - name: Health check
+        run: ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "curl -f http://localhost:80 || exit 1"
