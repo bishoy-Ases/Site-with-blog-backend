@@ -15,6 +15,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        run: |
+          required=(EC2_HOST EC2_USER EC2_SSH_KEY RDS_ENDPOINT RDS_DB RDS_USER RDS_PASS WP_HOME WP_SITEURL LETSENCRYPT_EMAIL)
+          for key in "${required[@]}"; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required secret: $key" >&2
+              exit 1
+            fi
+          done
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          RDS_ENDPOINT: ${{ secrets.RDS_ENDPOINT }}
+          RDS_DB: ${{ secrets.RDS_DB }}
+          RDS_USER: ${{ secrets.RDS_USER }}
+          RDS_PASS: ${{ secrets.RDS_PASS }}
+          WP_HOME: ${{ secrets.WP_HOME }}
+          WP_SITEURL: ${{ secrets.WP_SITEURL }}
+          LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+
       - name: Install SSH key
         uses: webfactory/ssh-agent@v0.9.0
         with:
