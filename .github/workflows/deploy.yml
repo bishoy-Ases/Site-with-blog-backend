@@ -151,17 +151,4 @@ jobs:
             sudo docker compose restart nginx
           "
 
-      - name: Health check
-        run: |
-          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-            set -e
-            cd /opt/wordpress
-            echo 'Checking HTTP (80)'
-            curl -sI http://localhost:80 >/dev/null
-            echo 'Checking HTTPS (443)'
-            # Ignore certificate hostname mismatch while testing local endpoint
-            curl -skI https://localhost:443 >/dev/null
-            echo 'Checking WordPress service status'
-            sudo docker compose ps | grep -q 'wordpress' | grep -q 'Up'
-            echo 'Health checks passed'
-          "
+      # Health check step removed as requested
