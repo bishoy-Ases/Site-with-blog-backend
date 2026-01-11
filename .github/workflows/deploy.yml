@@ -18,12 +18,18 @@ jobs:
       - name: Validate required secrets
         run: |
           required=(EC2_HOST EC2_USER EC2_SSH_KEY RDS_ENDPOINT RDS_DB RDS_USER RDS_PASS WP_HOME WP_SITEURL LETSENCRYPT_EMAIL)
+          missing=()
           for key in "${required[@]}"; do
             if [ -z "${!key}" ]; then
-              echo "Missing required secret: $key" >&2
-              exit 1
+              missing+=("$key")
             fi
           done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ERROR: Missing required secrets:"
+            printf '  - %s\n' "${missing[@]}"
+            exit 1
+          fi
+          echo "✓ All required secrets are present"
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
@@ -105,28 +111,36 @@ jobs:
           WP_HOME: ${{ secrets.WP_HOME }}
           WP_SITEURL: ${{ secrets.WP_SITEURL }}
         run: |
-          # Validate secrets on local machine first
+          # Validate secrets locally first
           if [ -z "$RDS_ENDPOINT" ] || [ -z "$RDS_DB" ] || [ -z "$RDS_USER" ] || [ -z "$RDS_PASS" ] || [ -z "$WP_HOME" ] || [ -z "$WP_SITEURL" ]; then
-            echo "ERROR: Missing required secrets: RDS_ENDPOINT, RDS_DB, RDS_USER, RDS_PASS, WP_HOME, WP_SITEURL"
+            echo "ERROR: Missing required secrets"
+            echo "  RDS_ENDPOINT: ${RDS_ENDPOINT:-(empty)}"
+            echo "  RDS_DB: ${RDS_DB:-(empty)}"
+            echo "  RDS_USER: ${RDS_USER:-(empty)}"
+            echo "  RDS_PASS: ${RDS_PASS:-(empty)}"
+            echo "  WP_HOME: ${WP_HOME:-(empty)}"
+            echo "  WP_SITEURL: ${WP_SITEURL:-(empty)}"
             exit 1
           fi
           
-          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
+          # Create .env with explicit variable substitution (not inside heredoc to ensure expansion)
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash -c "
             set -e
             cd /opt/wordpress
-            cat > .env <<EOT
+            cat > .env << 'EOFENV'
           WORDPRESS_DB_HOST=$RDS_ENDPOINT
           WORDPRESS_DB_NAME=$RDS_DB
           WORDPRESS_DB_USER=$RDS_USER
           WORDPRESS_DB_PASSWORD=$RDS_PASS
           WORDPRESS_TABLE_PREFIX=wp_
           WORDPRESS_DEBUG=false
-          WORDPRESS_CONFIG_EXTRA=\"define('WP_HOME','$WP_HOME'); define('WP_SITEURL','$WP_SITEURL');\"
-          EOT
+          WORDPRESS_CONFIG_EXTRA=\"define('WP_HOME',\"\\\"$WP_HOME\\\"\"); define('WP_SITEURL',\"\\\"$WP_SITEURL\\\"\");\"
+          EOFENV
             
-            echo '✓ .env file created successfully'
-            test -s .env || (echo 'ERROR: .env file is empty' && exit 1)
-            grep -q WORDPRESS_DB_HOST .env || (echo 'ERROR: .env validation failed' && exit 1)
+            echo '✓ .env file created'
+            test -s .env || (echo 'ERROR: .env is empty' && exit 1)
+            grep -q \"WORDPRESS_DB_HOST=$RDS_ENDPOINT\" .env || (echo 'ERROR: RDS endpoint not in .env' && exit 1)
+            echo '✓ .env validation passed'
           "
 
       - name: Deploy stack
