@@ -66,6 +66,10 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo mkdir -p /opt/wordpress && sudo chown -R ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /opt/wordpress"
 
+      - name: Install Docker on EC2
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "sudo dnf install -y docker docker-compose-plugin && sudo systemctl enable --now docker"
+
       - name: Sync project to EC2
         run: rsync -az --delete -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress
 
@@ -95,9 +99,9 @@ jobs:
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
           cd /opt/wordpress
-          docker compose pull
-          docker compose up -d --remove-orphans
-          docker system prune -f
+          sudo docker compose pull
+          sudo docker compose up -d --remove-orphans
+          sudo docker system prune -f
           EOF
 
       - name: Issue/Renew Let's Encrypt
@@ -108,16 +112,16 @@ jobs:
           mkdir -p certbot/conf certbot/www
           if [ -f certbot/conf/live/${BLOG_DOMAIN}/fullchain.pem ]; then
             echo "Renewing certificate for ${BLOG_DOMAIN}"
-            docker compose run --rm certbot renew
+            sudo docker compose run --rm certbot renew
           else
             echo "Issuing certificate for ${BLOG_DOMAIN}"
-            docker compose run --rm certbot certonly \
+            sudo docker compose run --rm certbot certonly \
               --webroot -w /var/www/certbot \
               -d ${BLOG_DOMAIN} \
               --email ${LETSENCRYPT_EMAIL} \
               --agree-tos --no-eff-email --non-interactive
           fi
-          docker compose restart nginx
+          sudo docker compose restart nginx
           EOF
         env:
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
