@@ -137,10 +137,16 @@ jobs:
             mkdir -p certbot/conf certbot/www
             if [ -f certbot/conf/live/$BLOG_DOMAIN/fullchain.pem ]; then
               echo 'Renewing certificate for $BLOG_DOMAIN'
-              sudo docker compose run --rm certbot renew --cert-name $BLOG_DOMAIN
+              # If renewal fails (e.g., broken config), fallback to issuing a fresh cert with the correct cert-name.
+              sudo docker compose run --rm certbot renew --cert-name $BLOG_DOMAIN || sudo docker compose run --rm certbot certonly --cert-name $BLOG_DOMAIN --webroot -w /var/www/certbot -d $BLOG_DOMAIN --email $LETSENCRYPT_EMAIL --agree-tos --no-eff-email --non-interactive
             else
               echo 'Issuing certificate for $BLOG_DOMAIN'
               sudo docker compose run --rm certbot certonly --cert-name $BLOG_DOMAIN --webroot -w /var/www/certbot -d $BLOG_DOMAIN --email $LETSENCRYPT_EMAIL --agree-tos --no-eff-email --non-interactive
+            fi
+            # Ensure nginx sees the expected lineage path (avoid -0001 suffix issues)
+            if [ -d certbot/conf/live/${BLOG_DOMAIN}-0001 ] && [ ! -d certbot/conf/live/${BLOG_DOMAIN} ]; then
+              echo 'Linking ${BLOG_DOMAIN} to ${BLOG_DOMAIN}-0001 for nginx compatibility'
+              (cd certbot/conf/live && sudo ln -sfn ${BLOG_DOMAIN}-0001 ${BLOG_DOMAIN})
             fi
             sudo docker compose restart nginx
           "
