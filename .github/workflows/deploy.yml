@@ -137,10 +137,10 @@ jobs:
             mkdir -p certbot/conf certbot/www
             if [ -f certbot/conf/live/$BLOG_DOMAIN/fullchain.pem ]; then
               echo 'Renewing certificate for $BLOG_DOMAIN'
-              sudo docker compose run --rm certbot renew
+              sudo docker compose run --rm certbot renew --cert-name $BLOG_DOMAIN
             else
               echo 'Issuing certificate for $BLOG_DOMAIN'
-              sudo docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d $BLOG_DOMAIN --email $LETSENCRYPT_EMAIL --agree-tos --no-eff-email --non-interactive
+              sudo docker compose run --rm certbot certonly --cert-name $BLOG_DOMAIN --webroot -w /var/www/certbot -d $BLOG_DOMAIN --email $LETSENCRYPT_EMAIL --agree-tos --no-eff-email --non-interactive
             fi
             sudo docker compose restart nginx
           "
