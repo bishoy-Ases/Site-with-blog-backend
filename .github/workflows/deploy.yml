@@ -78,6 +78,21 @@ jobs:
           sudo docker compose version
           EOF
 
+      - name: Create dummy TLS cert if missing
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          set -e
+          cd /opt/wordpress
+          if [ ! -f certbot/conf/live/${BLOG_DOMAIN}/fullchain.pem ]; then
+            echo "Creating dummy certificate for ${BLOG_DOMAIN}"
+            sudo mkdir -p certbot/conf/live/${BLOG_DOMAIN}
+            sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+              -keyout certbot/conf/live/${BLOG_DOMAIN}/privkey.pem \
+              -out certbot/conf/live/${BLOG_DOMAIN}/fullchain.pem \
+              -subj "/CN=${BLOG_DOMAIN}"
+          fi
+          EOF
+
       - name: Sync project to EC2
         run: rsync -az --delete -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress
 
