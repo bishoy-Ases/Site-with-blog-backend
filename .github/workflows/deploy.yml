@@ -128,26 +128,29 @@ jobs:
           EOF
 
       - name: Issue/Renew Let's Encrypt
-        run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
-          set -e
-          cd /opt/wordpress
-          mkdir -p certbot/conf certbot/www
-          if [ -f certbot/conf/live/${BLOG_DOMAIN}/fullchain.pem ]; then
-            echo "Renewing certificate for ${BLOG_DOMAIN}"
-            sudo docker compose run --rm certbot renew
-          else
-            echo "Issuing certificate for ${BLOG_DOMAIN}"
-            sudo docker compose run --rm certbot certonly \
-              --webroot -w /var/www/certbot \
-              -d ${BLOG_DOMAIN} \
-              --email ${LETSENCRYPT_EMAIL} \
-              --agree-tos --no-eff-email --non-interactive
-          fi
-          sudo docker compose restart nginx
-          EOF
         env:
+          BLOG_DOMAIN: blog.aseskahraba.com
           LETSENCRYPT_EMAIL: ${{ secrets.LETSENCRYPT_EMAIL }}
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash -c "
+            set -e
+            cd /opt/wordpress
+            mkdir -p certbot/conf certbot/www
+            BLOG_DOMAIN='$BLOG_DOMAIN'
+            LETSENCRYPT_EMAIL='$LETSENCRYPT_EMAIL'
+            if [ -f certbot/conf/live/\${BLOG_DOMAIN}/fullchain.pem ]; then
+              echo 'Renewing certificate for '\${BLOG_DOMAIN}
+              sudo docker compose run --rm certbot renew
+            else
+              echo 'Issuing certificate for '\${BLOG_DOMAIN}
+              sudo docker compose run --rm certbot certonly \
+                --webroot -w /var/www/certbot \
+                -d \${BLOG_DOMAIN} \
+                --email \${LETSENCRYPT_EMAIL} \
+                --agree-tos --no-eff-email --non-interactive
+            fi
+            sudo docker compose restart nginx
+          "
 
       - name: Health check
         run: ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "curl -f http://localhost:80 || exit 1"
