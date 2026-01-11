@@ -1,27 +1,34 @@
 <?php get_header(); ?>
-<main>
-  <?php ases_container_open(); ?>
-    <section style="padding:32px 0;">
-      <h1><?php bloginfo('name'); ?></h1>
-      <p><?php bloginfo('description'); ?></p>
-    </section>
 
-    <?php if (have_posts()) : ?>
-      <div style="display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
-        <?php while (have_posts()) : the_post(); ?>
-          <article class="card">
-            <?php if (has_post_thumbnail()) : ?>
-              <a href="<?php the_permalink(); ?>"><?php the_post_thumbnail('medium_large'); ?></a>
-            <?php endif; ?>
-            <h2><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
-            <p><?php echo wp_trim_words(get_the_excerpt(), 24); ?></p>
-            <a class="btn-primary" href="<?php the_permalink(); ?>">Read more</a>
-          </article>
-        <?php endwhile; ?>
-      </div>
-    <?php else : ?>
-      <p>No content found.</p>
-    <?php endif; ?>
-  <?php ases_container_close(); ?>
+<main class="container">
+  <div class="page-title">Blog</div>
+  
+  <?php if (have_posts()) : ?>
+    <div class="posts-grid">
+      <?php
+      while (have_posts()) {
+        the_post();
+        ?>
+        <article class="post-card">
+          <?php if (has_post_thumbnail()) : ?>
+            <img class="post-card-image" src="<?php echo get_the_post_thumbnail_url('medium'); ?>" alt="<?php the_title(); ?>" />
+          <?php else : ?>
+            <div class="post-card-image" style="background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">No Image</div>
+          <?php endif; ?>
+          <div class="post-card-content">
+            <div class="post-card-date"><?php echo get_the_date('M d, Y'); ?></div>
+            <h3><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
+            <p><?php echo wp_trim_words(get_the_excerpt(), 15); ?></p>
+            <a href="<?php the_permalink(); ?>" class="btn">Read More</a>
+          </div>
+        </article>
+        <?php
+      }
+      ?>
+    </div>
+  <?php else : ?>
+    <p>No posts found.</p>
+  <?php endif; ?>
 </main>
+
 <?php get_footer(); ?>
