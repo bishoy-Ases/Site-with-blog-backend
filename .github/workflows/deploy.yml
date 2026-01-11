@@ -98,8 +98,16 @@ jobs:
 
       - name: Write .env on EC2
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          set -e
           cd /opt/wordpress
+          
+          # Validate that all required secrets are provided
+          if [ -z "${RDS_ENDPOINT}" ] || [ -z "${RDS_DB}" ] || [ -z "${RDS_USER}" ] || [ -z "${RDS_PASS}" ] || [ -z "${WP_HOME}" ] || [ -z "${WP_SITEURL}" ]; then
+            echo "ERROR: Missing required environment variables for .env file"
+            exit 1
+          fi
+          
           cat > .env <<EOT
           WORDPRESS_DB_HOST=${RDS_ENDPOINT}
           WORDPRESS_DB_NAME=${RDS_DB}
@@ -109,6 +117,9 @@ jobs:
           WORDPRESS_DEBUG=false
           WORDPRESS_CONFIG_EXTRA="define('WP_HOME','${WP_HOME}'); define('WP_SITEURL','${WP_SITEURL}');"
           EOT
+          
+          echo "✓ .env file created successfully"
+          test -s .env || (echo "ERROR: .env file is empty" && exit 1)
           EOF
         env:
           RDS_ENDPOINT: ${{ secrets.RDS_ENDPOINT }}
@@ -125,6 +136,52 @@ jobs:
           sudo docker compose pull
           sudo docker compose up -d --remove-orphans
           sudo docker system prune -f
+          EOF
+
+      - name: Ensure WordPress core files exist
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          set -e
+          cd /opt/wordpress
+          if [ ! -f wp/index.php ] || [ ! -d wp/wp-admin ]; then
+            echo "WordPress core files missing or incomplete. Downloading and extracting latest release..."
+            cd /tmp && rm -rf wordpress latest.zip
+            wget -q https://wordpress.org/latest.zip
+            unzip -q latest.zip
+            cd /opt/wordpress
+            sudo rm -rf wp-admin wp-includes wp-*.php index.php license.txt readme.html xmlrpc.php 2>/dev/null || true
+            sudo cp -r /tmp/wordpress/* /opt/wordpress/wp/
+            sudo chown -R ec2-user:ec2-user /opt/wordpress/wp
+            echo "WordPress core files restored"
+          else
+            echo "WordPress core files verified"
+          fi
+          EOF
+
+      - name: Wait for database connectivity
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          set -e
+          cd /opt/wordpress
+          echo "Waiting for WordPress service to be ready..."
+          sleep 5
+          
+          echo "Validating .env file..."
+          RDS_ENDPOINT=$(grep WORDPRESS_DB_HOST .env | cut -d= -f2)
+          RDS_USER=$(grep WORDPRESS_DB_USER .env | cut -d= -f2)
+          RDS_PASS=$(grep WORDPRESS_DB_PASSWORD .env | cut -d= -f2)
+          RDS_DB=$(grep WORDPRESS_DB_NAME .env | cut -d= -f2)
+          
+          if [ -z "$RDS_ENDPOINT" ] || [ -z "$RDS_USER" ] || [ -z "$RDS_PASS" ] || [ -z "$RDS_DB" ]; then
+            echo "ERROR: Database credentials in .env are incomplete!"
+            cat .env
+            exit 1
+          fi
+          
+          echo "Testing database connectivity to $RDS_ENDPOINT..."
+          which mysql || (sudo dnf install -y mariadb-client)
+          mysql -h $RDS_ENDPOINT -u $RDS_USER -p$RDS_PASS -e "SELECT 1" || (echo "Database connectivity failed. Verify RDS security groups and credentials." && exit 1)
+          echo "Database connectivity verified"
           EOF
 
       - name: Issue/Renew Let's Encrypt
