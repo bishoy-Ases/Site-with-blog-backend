@@ -94,7 +94,7 @@ jobs:
           EOF
 
       - name: Sync project to EC2
-        run: rsync -az --delete -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress
+        run: rsync -az --delete --exclude='certbot/' -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress
 
       - name: Write .env on EC2
         run: |
