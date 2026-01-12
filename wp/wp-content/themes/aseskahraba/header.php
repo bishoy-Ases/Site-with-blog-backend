@@ -7,8 +7,11 @@
 </head>
 <body <?php body_class(); ?>>
 <header>
-  <div class="container" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-    <a href="<?php echo esc_url(home_url('/')); ?>" style="font-weight: 700; font-size: 1.1rem; color: var(--text);">Ases Kahraba Blog</a>
+  <div class="container" style="display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <img src="/wp-content/themes/aseskahraba/logo.png" alt="Ases Kahraba Logo" class="site-logo" />
+      <span style="font-weight: 700; font-size: 2em; color: var(--text); letter-spacing: 1px;">Ases Kahraba</span>
+    </div>
     <nav>
       <?php
       wp_nav_menu([

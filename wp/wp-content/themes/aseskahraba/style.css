@@ -34,17 +34,80 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
   color: var(--accent);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
+/*
 a:hover { color: var(--accent-dark); }
 
 header {
   background: #ffffff;
   border-bottom: 1px solid var(--border);
+
+:root {
+  --accent: #f5a623;
+  --background: #f9f7f3;
+  --text: #1f1f1f;
+  --muted: #4a4a4a;
+  --font-main: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-main);
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+header, footer {
+  background: var(--accent);
+  color: #fff;
+  padding: 24px 0;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-main);
+  color: var(--text);
+  margin-top: 0;
+}
+
+nav {
+  display: flex;
+  gap: 32px;
+}
+
+.site-logo {
+  height: 48px;
+  margin-right: 16px;
+}
+
+footer {
+  font-size: 0.95em;
+  color: #fff;
+  background: var(--accent);
+  border-top: 2px solid var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
   padding: 16px 0;
   position: sticky;
   top: 0;

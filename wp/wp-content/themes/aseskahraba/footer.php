@@ -14,7 +14,18 @@
     </div>
   </div>
   <div class="container" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); text-align: center;">
-    <p style="margin: 0; font-size: 0.9rem; color: var(--text-light);">&copy; <?php echo date('Y'); ?> Ases Kahraba. All Rights Reserved.</p>
+      <footer>
+        <div class="container" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="/wp-content/themes/aseskahraba/logo.png" alt="Ases Kahraba Logo" class="site-logo" style="height:32px;" />
+            <span style="font-weight: 600; font-size: 1.1em;">Ases Kahraba</span>
+          </div>
+          <nav>
+            <?php wp_nav_menu(['theme_location' => 'footer', 'container' => false]); ?>
+          </nav>
+          <div class="muted" style="font-size:0.95em;">&copy; <?php echo date('Y'); ?> Ases Kahraba. All rights reserved.</div>
+        </div>
+      </footer>
   </div>
 </footer>
 <?php wp_footer(); ?>
