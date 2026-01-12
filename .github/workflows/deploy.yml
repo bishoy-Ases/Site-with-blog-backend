@@ -100,7 +100,7 @@ jobs:
           EOF
 
       - name: Sync project to EC2
-        run: rsync -az --delete --exclude='certbot/' -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress
+        run: rsync -az --delete --exclude='certbot/' --exclude='wp/wp-config.php' -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress
 
       - name: Write .env on EC2
         env:
@@ -134,7 +134,7 @@ jobs:
           WORDPRESS_DB_PASSWORD=$RDS_PASS
           WORDPRESS_TABLE_PREFIX=wp_
           WORDPRESS_DEBUG=false
-          WORDPRESS_CONFIG_EXTRA=\"define('WP_HOME',\"\\\"$WP_HOME\\\"\"); define('WP_SITEURL',\"\\\"$WP_SITEURL\\\"\");\"
+          WORDPRESS_CONFIG_EXTRA=define('WP_HOME','$WP_HOME'); define('WP_SITEURL','$WP_SITEURL');
           EOFENV
             
             echo '✓ .env file created'
