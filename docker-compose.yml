@@ -21,6 +21,7 @@ services:
       - ./wp:/var/www/html
       - wp-data:/var/www/html/wp-content/uploads
       - wp-cache:/var/www/html/wp-content/cache
+      - wp-upgrade:/var/www/html/wp-content/upgrade
     depends_on: []
 
   nginx:
@@ -61,3 +62,9 @@ volumes:
       type: none
       o: bind
       device: ./wp-cache
+  wp-upgrade:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./wp-upgrade

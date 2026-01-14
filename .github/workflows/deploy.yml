@@ -107,7 +107,7 @@ jobs:
           EOF
 
       - name: Sync project to EC2
-        run: rsync -az --delete --exclude='certbot/' --exclude='wp/wp-config.php' --exclude='wordpress-theme/' -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress && rsync -az -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" wordpress-theme/aseskahraba/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress/wp/wp-content/themes/aseskahraba/ && rsync -az --exclude='*.php' -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" wp-data/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress/wp-data/ && rsync -az -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" wp-cache/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress/wp-cache/
+        run: rsync -az --delete --exclude='certbot/' --exclude='wp/wp-config.php' --exclude='wordpress-theme/' -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress && rsync -az -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" wordpress-theme/aseskahraba/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress/wp/wp-content/themes/aseskahraba/ && rsync -az --exclude='*.php' -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" wp-data/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress/wp-data/ && rsync -az -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" wp-cache/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress/wp-cache/ && rsync -az -e "ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes" wp-upgrade/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/opt/wordpress/wp-upgrade/
 
       - name: Write .env on EC2
         env:
@@ -175,11 +175,7 @@ jobs:
           echo "Fixing WordPress file permissions..."
           sudo docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content
           sudo docker compose exec -T wordpress chmod -R 775 /var/www/html/wp-content
-          echo "Creating upgrade directory..."
-          sudo docker compose exec -T wordpress mkdir -p /var/www/html/wp-content/upgrade
-          sudo docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content/upgrade
-          sudo docker compose exec -T wordpress chmod -R 775 /var/www/html/wp-content/upgrade
-          echo "✓ WordPress permissions and upgrade directory fixed"
+          echo "✓ WordPress permissions fixed"
           EOF
 
       - name: Ensure WordPress core files exist
