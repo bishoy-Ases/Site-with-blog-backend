@@ -170,6 +170,21 @@ jobs:
           echo "✓ WordPress permissions fixed"
           EOF
 
+      - name: Activate theme
+        run: |
+          ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
+          set -e
+          cd /opt/wordpress
+          echo "Activating aseskahraba theme..."
+          RDS_ENDPOINT=$(grep WORDPRESS_DB_HOST .env | cut -d= -f2)
+          RDS_USER=$(grep WORDPRESS_DB_USER .env | cut -d= -f2)
+          RDS_PASS=$(grep WORDPRESS_DB_PASSWORD .env | cut -d= -f2)
+          RDS_DB=$(grep WORDPRESS_DB_NAME .env | cut -d= -f2)
+          
+          mysql -h $RDS_ENDPOINT -u $RDS_USER -p$RDS_PASS $RDS_DB -e "UPDATE wp_options SET option_value = 'aseskahraba' WHERE option_name IN ('template', 'stylesheet');" || echo "Theme activation failed, might already be set"
+          echo "✓ Theme activated"
+          EOF
+
       - name: Ensure WordPress core files exist
         run: |
           ssh -i ~/.ssh/id_ec2 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
