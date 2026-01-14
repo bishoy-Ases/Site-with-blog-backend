@@ -167,7 +167,11 @@ jobs:
           echo "Fixing WordPress file permissions..."
           sudo docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content
           sudo docker compose exec -T wordpress chmod -R 775 /var/www/html/wp-content
-          echo "✓ WordPress permissions fixed"
+          echo "Creating upgrade directory..."
+          sudo docker compose exec -T wordpress mkdir -p /var/www/html/wp-content/upgrade
+          sudo docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content/upgrade
+          sudo docker compose exec -T wordpress chmod -R 775 /var/www/html/wp-content/upgrade
+          echo "✓ WordPress permissions and upgrade directory fixed"
           EOF
 
       - name: Ensure WordPress core files exist
