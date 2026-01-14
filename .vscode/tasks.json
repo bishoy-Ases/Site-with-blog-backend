@@ -1,0 +1,26 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "git-commit-push",
+			"type": "shell",
+			"command": "cd /Users/bishoykamel/Site-with-blog-backend-main && git add .github/workflows/deploy.yml && git commit -m \"CI: create dummy cert before nginx starts\" && git push",
+			"problemMatcher": []
+		},
+		{
+			"label": "commit-workflow-fix",
+			"type": "shell",
+			"command": "cd /Users/bishoykamel/Site-with-blog-backend-main && git add .github/workflows/deploy.yml && git commit -m 'Fix certbot in workflow' && git push"
+		},
+		{
+			"label": "fix-rsync-certbot",
+			"type": "shell",
+			"command": "cd /Users/bishoykamel/Site-with-blog-backend-main && git add .github/workflows/deploy.yml && git commit -m 'Exclude certbot from rsync deletion' && git push"
+		},
+		{
+			"label": "fix-certbot-cmd",
+			"type": "shell",
+			"command": "cd /Users/bishoykamel/Site-with-blog-backend-main && git add .github/workflows/deploy.yml && git commit -m 'Simplify certbot command in workflow' && git push"
+		}
+	]
+}
