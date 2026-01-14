@@ -19,9 +19,9 @@ services:
       AWS_S3_SECRET_KEY: ${AWS_S3_SECRET_KEY:-}
     volumes:
       - ./wp:/var/www/html
-      - wp-data:/var/www/html/wp-content/uploads
-      - wp-cache:/var/www/html/wp-content/cache
-      - wp-upgrade:/var/www/html/wp-content/upgrade
+      - ./wp-data:/var/www/html/wp-content/uploads
+      - ./wp-cache:/var/www/html/wp-content/cache
+      - ./wp-upgrade:/var/www/html/wp-content/upgrade
     depends_on: []
 
   nginx:
@@ -47,24 +47,3 @@ services:
     # No entrypoint/command here so `docker compose run certbot ...` will
     # invoke the certbot binary with provided subcommands (e.g., `certonly`).
 
-volumes:
-  wp:
-    driver: local
-  wp-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./wp-data
-  wp-cache:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./wp-cache
-  wp-upgrade:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./wp-upgrade
