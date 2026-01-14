@@ -23,3 +23,10 @@ add_action('wp_enqueue_scripts', function () {
 // Simple helper to output container
 function ases_container_open() { echo '<div class="container">'; }
 function ases_container_close() { echo '</div>'; }
+// S3 Configuration (if AWS_S3_BUCKET is set)
+if (defined('AWS_S3_BUCKET') && AWS_S3_BUCKET) {
+    define('AS3CF_AWS_ACCESS_KEY_ID', getenv('AWS_S3_ACCESS_KEY') ?: '');
+    define('AS3CF_AWS_SECRET_ACCESS_KEY', getenv('AWS_S3_SECRET_KEY') ?: '');
+    define('AS3CF_BUCKET', AWS_S3_BUCKET);
+    define('AS3CF_REGION', getenv('AWS_S3_REGION') ?: 'eu-north-1');
+}
