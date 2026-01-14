@@ -11,9 +11,11 @@
     <div style="display: flex; align-items: center; gap: 16px;">
       <?php
       if (has_custom_logo()) {
+        echo '<a href="' . esc_url(home_url('/')) . '" class="site-logo-link">';
         the_custom_logo();
+        echo '</a>';
       } else {
-        echo '<img src="/wp-content/themes/aseskahraba/logo.png" alt="Ases Kahraba Logo" class="site-logo" />';
+        echo '<img src="/wp-content/themes/aseskahraba/logo.png" alt="Ases Kahraba Logo" class="site-logo" style="height: 80px; width: auto;" />';
       }
       ?>
       <span style="font-weight: 700; font-size: 2em; color: var(--text); letter-spacing: 1px;">Ases Kahraba</span>
